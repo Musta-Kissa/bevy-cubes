@@ -32,6 +32,7 @@ impl Direction {
 pub fn new_quad(dir: Direction, pos: Vec3) -> [[f32;3];4] {
     //Down -y
     match dir {
+        // Each face is written to have clockwise winding
         Direction::North => 
             [
             [pos.x+1.,pos.y+0.,pos.z+0.],
@@ -77,11 +78,3 @@ pub fn new_quad(dir: Direction, pos: Vec3) -> [[f32;3];4] {
     }
 }
 
-pub fn gen_indeces(vert_len:usize) -> Indices {
-        let mut indices: Vec<u32> = Vec::new();
-        indices.reserve_exact(vert_len);
-        for i in 0..(vert_len as u32)/4 {
-            indices.extend([0+4*i,1+4*i,2+4*i , 2+4*i,3+4*i,0+4*i]); 
-        }
-        Indices::U32(indices)
-}

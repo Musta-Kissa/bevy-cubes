@@ -1,129 +1,63 @@
-use bevy_flycam::prelude::*;
+use bevy::math::f32::Vec3;
 use bevy::prelude::*;
 use bevy::render::{
-    mesh::{Indices, VertexAttributeValues},
+    mesh::Indices,
     render_asset::RenderAssetUsages,
-    render_resource::PrimitiveTopology,
+    render_resource::{Face, PrimitiveTopology},
 };
-use bevy::math::f32::Vec3;
-
-use bevy_cubes::quad::{Direction,new_quad,gen_indeces};
+use bevy::window::{PresentMode, PrimaryWindow};
+use bevy_cubes::chunk::*;
+use bevy_flycam::prelude::*;
+use bracket_noise::prelude::*;
 
 #[derive(Component)]
 struct MyMesh;
 
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(PlayerPlugin)
-      //  .add_systems(Startup, test)
-        .add_systems(Startup, spawn_cubes)
-        //.add_systems(Startup, lsfr)
-        .add_systems(Startup, setup)
-        .run();
+#[derive(Resource)]
+struct FPS {
+    buffer: [f32; 10],
+    index: i64,
 }
 
-fn test(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-){
-    let mut vec:Vec<[f32;3]> = Vec::new();
-    let mut norm:Vec<Vec3> = Vec::new();
-    for dir in Direction::iter() {
-        for corner in new_quad(dir.clone(), Vec3::new(1.,1.,1.)){
-            vec.push(corner);
-        }
-        let normal = match dir {
-                Direction::North => Vec3::X,
-                Direction::South => Vec3::NEG_X,
-                Direction::East => Vec3::NEG_Z,
-                Direction::West => Vec3::Z,
-                Direction::Up => Vec3::Y,
-                Direction::Down => Vec3::NEG_Y
-            };
-        norm.extend(vec![normal;4]);
-    }
-    let indeces = gen_indeces(vec.len());
-    println!("{:?}",vec);
-    println!();
-    println!("{:?}",indeces);
-    println!();
-    println!("{:?}",norm);
-
-    let cube_mesh_handle = meshes.add(
-    Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::RENDER_WORLD) 
-        .with_inserted_attribute(
-            Mesh::ATTRIBUTE_POSITION,vec) 
-        .with_inserted_indices(indeces)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, norm));
-
-    commands.spawn((
-        PbrBundle {
-            mesh: cube_mesh_handle,
-            material: materials.add(StandardMaterial {
-                base_color: Color::srgb(0.8, 0.2, 0.2),
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                present_mode: PresentMode::Immediate, //NO V-Sync comment to turn on
                 ..default()
             }),
             ..default()
-        },
-        MyMesh,
-    ));
+        }))
+        .insert_resource(FPS {
+            buffer: [0.0; 10],
+            index: 0,
+        })
+        .add_plugins(PlayerPlugin)
+        .insert_resource(MovementSettings {
+            sensitivity: 0.00012, // default: 0.00012
+            speed: 64.0,          // default: 12.0
+        })
+        .add_systems(Startup, setup)
+        .add_systems(Startup, spawn_cubes)
+        .add_systems(Startup, spawn_cardinal_lines)
+        .add_systems(Update, fps)
+        .run();
 }
 
 fn setup(
     mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    //mut materials: ResMut<Assets<StandardMaterial>>,
+    //mut meshes: ResMut<Assets<Mesh>>,
 ) {
-      // Create the line meshes
-    let red_line_mesh = create_line_mesh(Vec3::ZERO, Vec3::X * 2.0);
-    let green_line_mesh = create_line_mesh(Vec3::ZERO, Vec3::Y * 2.0);
-    let blue_line_mesh = create_line_mesh(Vec3::ZERO, Vec3::Z * 2.0);
-
-    // Insert the meshes into assets
-    let red_line_handle = meshes.add(red_line_mesh);
-    let green_line_handle = meshes.add(green_line_mesh);
-    let blue_line_handle = meshes.add(blue_line_mesh);
-
-    // Spawn the lines
-    commands.spawn(PbrBundle {
-        mesh: red_line_handle,
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(1., 0., 0.),
-            ..default()
-        }),
-        ..default()
-    });
-
-    commands.spawn(PbrBundle {
-        mesh: green_line_handle,
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0., 1., 0.),
-            ..default()
-        }),
-        ..default()
-    });
-
-    commands.spawn(PbrBundle {
-        mesh: blue_line_handle,
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0., 0., 1.),
-            ..default()
-        }),
-        ..default()
-    });
-
     // Transform for the camera and lighting, looking at (0,0,0) (the position of the mesh).
-    let light_transform =
-        Transform::from_xyz(64.,64.,64.,).looking_at(Vec3::new(-1.,-1.,-1.), Vec3::Y);
+    let light_transform = Transform::from_xyz(1024., 1024., 1024.).looking_at(Vec3::ZERO, Vec3::Y);
 
     // Light up the scene.
-    commands.spawn(PointLightBundle {
+    commands.spawn(DirectionalLightBundle {
         transform: light_transform,
-        point_light: PointLight {
-            range: 1000.,
-            intensity: 1_000_000_000.,
+        directional_light: DirectionalLight {
+            shadows_enabled: true,
+            illuminance: 4000.,
             ..default()
         },
         ..default()
@@ -131,10 +65,10 @@ fn setup(
 }
 
 fn create_line_mesh(start: Vec3, end: Vec3) -> Mesh {
-    let mut mesh = Mesh::new(PrimitiveTopology::LineList,RenderAssetUsages::RENDER_WORLD);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vec![start ,end]);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![end,end]);
-    mesh.insert_indices(Indices::U32(vec![0,1]));
+    let mut mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::RENDER_WORLD);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vec![start, end]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![end, end]);
+    mesh.insert_indices(Indices::U32(vec![0, 1]));
     mesh
 }
 
@@ -142,56 +76,44 @@ fn spawn_cubes(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-){
-    let cube_list: Vec<[f32;3]> = gen_cube_list(6000);
-    let mut vertices:Vec<[f32;3]> = Vec::new();
-    let mut norm:Vec<Vec3> = Vec::new();
-    
-    for cube_pos in cube_list {
-        for dir in Direction::iter() {
-            for corner in new_quad(dir.clone(), cube_pos.into()){
-                vertices.push(corner);
-            }
-            let normal = match dir {
-                    Direction::North => Vec3::X,
-                    Direction::South => Vec3::NEG_X,
-                    Direction::East => Vec3::NEG_Z,
-                    Direction::West => Vec3::Z,
-                    Direction::Up => Vec3::Y,
-                    Direction::Down => Vec3::NEG_Y
+) {
+    for x in 0..4 {
+        for y in 0..4 {
+            for z in 0..4 {
+                let chunk_data = gen_chunk_data(IVec3::new(x, y, z));
+                let chunk = Chunk {
+                    data: chunk_data,
+                    position: IVec3::new(x, y, z),
                 };
-            norm.extend(vec![normal;4]);
+                let mesh = gen_mesh(&chunk);
+                let mesh_handle = meshes.add(mesh);
+
+                commands.spawn((
+                    PbrBundle {
+                        mesh: mesh_handle,
+                        material: materials.add(StandardMaterial {
+                            base_color: Color::srgb(0.8, 0.2, 0.2),
+                            cull_mode: Some(Face::Back),
+                            perceptual_roughness: 0.745,
+                            ..default()
+                        }),
+                        ..default()
+                    },
+                    MyMesh,
+                ));
+            }
         }
     }
-    let indeces = gen_indeces(vertices.len());
-    
-    let mesh_handle = meshes.add(
-    Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::RENDER_WORLD) 
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices) 
-        .with_inserted_indices(indeces)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, norm));
-
-    commands.spawn((
-        PbrBundle {
-            mesh: mesh_handle,
-            material: materials.add(StandardMaterial {
-                base_color: Color::srgb(0.8, 0.2, 0.2),
-                ..default()
-            }),
-            ..default()
-        },
-        MyMesh,
-    ));
 }
 
-fn gen_cube_list(cube_count:usize) -> Vec<[f32;3]> {
+fn gen_cube_list(cube_count: usize) -> Vec<[f32; 3]> {
     let mut rand_32 = lsfr();
-    let mut cube_list: Vec<[f32;3]> = Vec::new();
+    let mut cube_list: Vec<[f32; 3]> = Vec::new();
     for _ in 0..cube_count {
         let x = rand_32() as f32;
         let y = rand_32() as f32;
         let z = rand_32() as f32;
-        cube_list.push([x,y,z]);
+        cube_list.push([x, y, z]);
     }
     cube_list
 }
@@ -199,8 +121,8 @@ fn gen_cube_list(cube_count:usize) -> Vec<[f32;3]> {
 fn lsfr() -> impl FnMut() -> u32 {
     let mut state = 1 << 15 | 1;
     let mut step = move || {
-        let bit = (state ^ (state >> 1) ^ ( state >> 3) ^ (state >> 12)) & 1;
-        state = ( state >> 1) | ( bit << 15);
+        let bit = (state ^ (state >> 1) ^ (state >> 3) ^ (state >> 12)) & 1;
+        state = (state >> 1) | (bit << 15);
         bit
     };
     let rand_32 = move || {
@@ -214,6 +136,101 @@ fn lsfr() -> impl FnMut() -> u32 {
     rand_32
 }
 
-////fn create_mesh_wire() -> Mesh {
-    ////
-////}
+fn gen_chunk() -> ChunkData {
+    let mut noise = FastNoise::new();
+    noise.set_seed(111);
+    noise.set_noise_type(NoiseType::Perlin);
+    noise.set_frequency(6.);
+
+    let mut data = [[[false; 32]; 32]; 32];
+
+    for x in 0..32 {
+        for y in 0..32 {
+            for z in 0..32 {
+                //let n = noise.get_noise((x as f32) / 150., (z as f32) / 150.);
+                let n = noise.get_noise3d((x as f32) / 100., (y as f32) / 100., (z as f32) / 100.);
+                if n < 0. {
+                    data[x][y][z] = false;
+                } else {
+                    data[x][y][z] = true;
+                }
+            }
+        }
+    }
+    //println!("{:?}", data);
+
+    ChunkData { data: data }
+}
+
+fn spawn_cardinal_lines(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let line_lenght = 32.0;
+    // Create the line meshes
+    let red_line_mesh = create_line_mesh(Vec3::ZERO, Vec3::X * line_lenght);
+    let green_line_mesh = create_line_mesh(Vec3::ZERO, Vec3::Y * line_lenght);
+    let blue_line_mesh = create_line_mesh(Vec3::ZERO, Vec3::Z * line_lenght);
+
+    // Insert the meshes into assets
+    let red_line_handle = meshes.add(red_line_mesh);
+    let green_line_handle = meshes.add(green_line_mesh);
+    let blue_line_handle = meshes.add(blue_line_mesh);
+
+    // Spawn the lines
+    commands.spawn(PbrBundle {
+        mesh: red_line_handle,
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(2., 0., 0.),
+            ..default()
+        }),
+        ..default()
+    });
+
+    commands.spawn(PbrBundle {
+        mesh: green_line_handle,
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0., 2., 0.),
+            ..default()
+        }),
+        ..default()
+    });
+
+    commands.spawn(PbrBundle {
+        mesh: blue_line_handle,
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0., 0., 2.),
+            ..default()
+        }),
+        ..default()
+    });
+
+    commands.spawn(PointLightBundle {
+        transform: Transform::from_xyz(-2., -2., -2.),
+        ..default()
+    });
+}
+
+fn fps(
+    time: Res<Time>,
+    mut FPS: ResMut<FPS>,
+    mut window_query: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    FPS.index += 1;
+    let i = FPS.index;
+    let fps = 1. / time.delta_seconds();
+
+    FPS.buffer[(i % 10) as usize] = fps;
+
+    if i % 10 != 0 {
+        return;
+    }
+    if let Ok(mut window) = window_query.get_single_mut() {
+        let mut sum = 0.;
+        for n in 0..10 {
+            sum += FPS.buffer[n];
+        }
+        window.title = format!("FPS:{:0.2}", sum / 10.);
+    }
+}
