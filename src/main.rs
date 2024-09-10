@@ -106,62 +106,6 @@ fn spawn_cubes(
     }
 }
 
-fn gen_cube_list(cube_count: usize) -> Vec<[f32; 3]> {
-    let mut rand_32 = lsfr();
-    let mut cube_list: Vec<[f32; 3]> = Vec::new();
-    for _ in 0..cube_count {
-        let x = rand_32() as f32;
-        let y = rand_32() as f32;
-        let z = rand_32() as f32;
-        cube_list.push([x, y, z]);
-    }
-    cube_list
-}
-
-fn lsfr() -> impl FnMut() -> u32 {
-    let mut state = 1 << 15 | 1;
-    let mut step = move || {
-        let bit = (state ^ (state >> 1) ^ (state >> 3) ^ (state >> 12)) & 1;
-        state = (state >> 1) | (bit << 15);
-        bit
-    };
-    let rand_32 = move || {
-        let mut num = 0u32;
-        for _ in 0..5 {
-            num = num << 1;
-            num |= step();
-        }
-        num
-    };
-    rand_32
-}
-
-fn gen_chunk() -> ChunkData {
-    let mut noise = FastNoise::new();
-    noise.set_seed(111);
-    noise.set_noise_type(NoiseType::Perlin);
-    noise.set_frequency(6.);
-
-    let mut data = [[[false; 32]; 32]; 32];
-
-    for x in 0..32 {
-        for y in 0..32 {
-            for z in 0..32 {
-                //let n = noise.get_noise((x as f32) / 150., (z as f32) / 150.);
-                let n = noise.get_noise3d((x as f32) / 100., (y as f32) / 100., (z as f32) / 100.);
-                if n < 0. {
-                    data[x][y][z] = false;
-                } else {
-                    data[x][y][z] = true;
-                }
-            }
-        }
-    }
-    //println!("{:?}", data);
-
-    ChunkData { data: data }
-}
-
 fn spawn_cardinal_lines(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
