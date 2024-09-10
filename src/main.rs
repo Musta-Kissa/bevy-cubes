@@ -5,22 +5,17 @@ use bevy::render::{
     render_asset::RenderAssetUsages,
     render_resource::{Face, PrimitiveTopology},
 };
-use bevy::window::{PresentMode, PrimaryWindow};
+use bevy::window::PresentMode;
 use bevy_cubes::chunk::*;
+use bevy_cubes::fps::FpsPlugin;
 use bevy_flycam::prelude::*;
-use bracket_noise::prelude::*;
 
 #[derive(Component)]
 struct MyMesh;
 
-#[derive(Resource)]
-struct FPS {
-    buffer: [f32; 10],
-    index: i64,
-}
-
 fn main() {
     App::new()
+        .add_plugins(FpsPlugin)
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 present_mode: PresentMode::Immediate, //NO V-Sync comment to turn on
@@ -28,10 +23,6 @@ fn main() {
             }),
             ..default()
         }))
-        .insert_resource(FPS {
-            buffer: [0.0; 10],
-            index: 0,
-        })
         .add_plugins(PlayerPlugin)
         .insert_resource(MovementSettings {
             sensitivity: 0.00012, // default: 0.00012
@@ -40,15 +31,10 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cubes)
         .add_systems(Startup, spawn_cardinal_lines)
-        .add_systems(Update, fps)
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    //mut materials: ResMut<Assets<StandardMaterial>>,
-    //mut meshes: ResMut<Assets<Mesh>>,
-) {
+fn setup(mut commands: Commands) {
     // Transform for the camera and lighting, looking at (0,0,0) (the position of the mesh).
     let light_transform = Transform::from_xyz(1024., 1024., 1024.).looking_at(Vec3::ZERO, Vec3::Y);
 
@@ -63,6 +49,8 @@ fn setup(
         ..default()
     });
 }
+
+fn update_line_pos() {}
 
 fn create_line_mesh(start: Vec3, end: Vec3) -> Mesh {
     let mut mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::RENDER_WORLD);
@@ -80,10 +68,11 @@ fn spawn_cubes(
     for x in 0..4 {
         for y in 0..4 {
             for z in 0..4 {
-                let chunk_data = gen_chunk_data(IVec3::new(x, y, z));
+                let pos = IVec3::new(x, y, z);
+                let chunk_data = gen_chunk_data(pos);
                 let chunk = Chunk {
                     data: chunk_data,
-                    position: IVec3::new(x, y, z),
+                    position: pos,
                 };
                 let mesh = gen_mesh(&chunk);
                 let mesh_handle = meshes.add(mesh);
@@ -104,6 +93,16 @@ fn spawn_cubes(
             }
         }
     }
+}
+
+#[derive(Component)]
+struct CardinalLine;
+#[derive(Bundle)]
+struct CardinalBundle {
+    redline: PbrBundle,
+    greenline: PbrBundle,
+    blueline: PbrBundle,
+    marker: CardinalLine,
 }
 
 fn spawn_cardinal_lines(
@@ -149,32 +148,4 @@ fn spawn_cardinal_lines(
         }),
         ..default()
     });
-
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_xyz(-2., -2., -2.),
-        ..default()
-    });
-}
-
-fn fps(
-    time: Res<Time>,
-    mut FPS: ResMut<FPS>,
-    mut window_query: Query<&mut Window, With<PrimaryWindow>>,
-) {
-    FPS.index += 1;
-    let i = FPS.index;
-    let fps = 1. / time.delta_seconds();
-
-    FPS.buffer[(i % 10) as usize] = fps;
-
-    if i % 10 != 0 {
-        return;
-    }
-    if let Ok(mut window) = window_query.get_single_mut() {
-        let mut sum = 0.;
-        for n in 0..10 {
-            sum += FPS.buffer[n];
-        }
-        window.title = format!("FPS:{:0.2}", sum / 10.);
-    }
 }
