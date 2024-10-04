@@ -6,9 +6,10 @@ use bevy::render::{
     render_resource::{Face, PrimitiveTopology},
 };
 use bevy::window::PresentMode;
+use bevy_flycam::prelude::*;
+// Local imports
 use bevy_cubes::chunk::*;
 use bevy_cubes::fps::FpsPlugin;
-use bevy_flycam::prelude::*;
 
 #[derive(Component)]
 struct MyMesh;
@@ -50,8 +51,6 @@ fn setup(mut commands: Commands) {
     });
 }
 
-fn update_line_pos() {}
-
 fn create_line_mesh(start: Vec3, end: Vec3) -> Mesh {
     let mut mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::RENDER_WORLD);
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vec![start, end]);
@@ -69,7 +68,7 @@ fn spawn_cubes(
         for y in 0..4 {
             for z in 0..4 {
                 let pos = IVec3::new(x, y, z);
-                let chunk_data = gen_chunk_data(pos);
+                let chunk_data = gen_chunk(pos);
                 let chunk = Chunk {
                     data: chunk_data,
                     position: pos,

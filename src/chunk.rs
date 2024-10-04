@@ -75,10 +75,11 @@ pub fn gen_mesh(chunk: &Chunk) -> Mesh {
                     continue;
                 }
                 for dir in get_neighbours(&chunk.data, IVec3::new(x, y, z)) {
-                    vertices.extend(new_quad(dir.clone(), Vec3::new(
-                                                                (chunk.position.x * CHUNK_SIZE + x) as f32,
-                                                                (chunk.position.y * CHUNK_SIZE + y) as f32,
-                                                                (chunk.position.z * CHUNK_SIZE + z) as f32)) );
+                    vertices.extend(new_quad(dir.clone(), 
+                                             Vec3::new(
+                                                (chunk.position.x * CHUNK_SIZE + x) as f32,
+                                                (chunk.position.y * CHUNK_SIZE + y) as f32,
+                                                (chunk.position.z * CHUNK_SIZE + z) as f32)) );
                     let normal = match dir {
                         Direction::North => Vec3::X,
                         Direction::South => Vec3::NEG_X,
@@ -103,7 +104,7 @@ pub fn gen_mesh(chunk: &Chunk) -> Mesh {
     .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, norm)
 }
 
-pub fn gen_chunk_data(chunk_pos: IVec3) -> ChunkData {
+pub fn gen_chunk(chunk_pos: IVec3) -> ChunkData {
     let mut noise = FastNoise::new();
     noise.set_seed(SEED);
     noise.set_noise_type(NoiseType::Perlin);
