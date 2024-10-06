@@ -1,19 +1,22 @@
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 use bevy::prelude::*;
 use crate::chunk::*;
 use crate::quad::{new_quad, Direction};
 
-#[derive(Deref)]
-struct World {
-    chunks: HashMap<IVec3,Rc<Chunk>>
+#[derive(Deref,DerefMut,Resource)]
+pub struct VoxelWorld {
+    pub chunks: HashMap<IVec3,Arc<Chunk>>
 }
 
-impl World {
+impl VoxelWorld {
+    pub fn new() -> Self {
+        VoxelWorld { chunks: HashMap::<IVec3,Arc<Chunk>>::new() }
+    }
     fn add_chunk(&mut self, pos:IVec3,chunk:Chunk){
         self.chunks.insert(pos,chunk.into());
     }
-    fn get_chunk(&self,pos:IVec3) -> Option<Rc<Chunk>> {
+    fn get_chunk(&self,pos:IVec3) -> Option<Arc<Chunk>> {
         match self.chunks.get(&pos) {
             Some(c) => Some(c.clone()),
             None => None

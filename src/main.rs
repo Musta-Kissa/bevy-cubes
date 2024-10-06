@@ -10,6 +10,7 @@ use bevy_flycam::prelude::*;
 // Local imports
 use bevy_cubes::chunk::*;
 use bevy_cubes::fps::FpsPlugin;
+use bevy_cubes::world::VoxelWorld;
 
 #[derive(Component)]
 struct MyMesh;
@@ -24,11 +25,12 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(PlayerPlugin)
+        .add_plugins(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
             sensitivity: 0.00012, // default: 0.00012
             speed: 64.0,          // default: 12.0
         })
+        .insert_resource(VoxelWorld::new())
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cubes)
         .add_systems(Startup, spawn_cardinal_lines)
@@ -49,6 +51,13 @@ fn setup(mut commands: Commands) {
         },
         ..default()
     });
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(256., 64., 256.).looking_at(Vec3::ZERO,Vec3::Y),
+            ..default()
+        },
+        FlyCam
+    ));
 }
 
 fn create_line_mesh(start: Vec3, end: Vec3) -> Mesh {
@@ -63,34 +72,34 @@ fn spawn_cubes(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-) {
-    for x in 0..4 {
-        for y in 0..4 {
-            for z in 0..4 {
+    mut voxel_world: ResMut<VoxelWorld>,
+){
+    for x in 0..16 {
+        for y in 0..1 {
+            for z in 0..18 {
                 let pos = IVec3::new(x, y, z);
-                let chunk_data = gen_chunk(pos);
-                let chunk = Chunk {
-                    data: chunk_data,
-                    position: pos,
-                };
-                let mesh = gen_mesh(&chunk);
-                let mesh_handle = meshes.add(mesh);
-
-                commands.spawn((
-                    PbrBundle {
-                        mesh: mesh_handle,
-                        material: materials.add(StandardMaterial {
-                            base_color: Color::srgb(0.8, 0.2, 0.2),
-                            cull_mode: Some(Face::Back),
-                            perceptual_roughness: 0.745,
-                            ..default()
-                        }),
-                        ..default()
-                    },
-                    MyMesh,
-                ));
+                let chunk = gen_chunk_flat(pos);
+                voxel_world.insert(pos,chunk.into()); 
             }
         }
+    }
+    for (chunk_pos,chunk) in &voxel_world.chunks {
+        let mesh = gen_mesh(&chunk);
+        let mesh_handle = meshes.add(mesh);
+
+        commands.spawn((
+            PbrBundle {
+                mesh: mesh_handle,
+                material: materials.add(StandardMaterial {
+                    base_color: Color::srgb(0.8, 0.2, 0.2),
+                    cull_mode: Some(Face::Back),
+                    perceptual_roughness: 0.745,
+                    ..default()
+                }),
+                ..default()
+            },
+            MyMesh,
+        ));
     }
 }
 

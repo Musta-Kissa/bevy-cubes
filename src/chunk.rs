@@ -26,8 +26,8 @@ impl ChunkData {
 }
 
 pub struct Chunk {
-    pub data: ChunkData,
     pub position: IVec3,
+    pub data: ChunkData,
 }
 
 #[derive(Component)]
@@ -73,7 +73,7 @@ pub fn gen_mesh(chunk: &Chunk) -> Mesh {
     .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, norm)
 }
 
-pub fn gen_chunk(chunk_pos: IVec3) -> ChunkData {
+pub fn gen_chunk(chunk_pos: IVec3) -> Chunk {
     let mut noise = FastNoise::new();
     noise.set_seed(SEED);
     noise.set_noise_type(NoiseType::Perlin);
@@ -98,7 +98,32 @@ pub fn gen_chunk(chunk_pos: IVec3) -> ChunkData {
         }
     }
 
-    ChunkData { data: data }
+    Chunk{ data: ChunkData { data: data }, position: chunk_pos}
+}
+pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
+    let mut noise = FastNoise::new();
+    noise.set_seed(SEED);
+    noise.set_noise_type(NoiseType::Perlin);
+    noise.set_frequency(6.);
+
+    let mut data = [[[false; 32]; 32]; 32];
+
+    for x in 0..32usize {
+        for z in 0..32usize {
+            let n = (noise.get_noise(
+                ((chunk_pos.x * CHUNK_SIZE + x as i32) as f32) / 100.,
+                ((chunk_pos.z * CHUNK_SIZE + z as i32) as f32) / 100.,
+            ) + 1.) * 16.;
+            for y in 0..32usize {
+                if (y as f32) < n {
+                    data[x][y][z] = true;
+                } else {
+                    data[x][y][z] = false;
+                }
+            }
+        }
+    }
+    Chunk{ data: ChunkData { data: data }, position: chunk_pos}
 }
 pub fn gen_indeces(vert_len: usize) -> Indices {
     let mut indices: Vec<u32> = Vec::new();
