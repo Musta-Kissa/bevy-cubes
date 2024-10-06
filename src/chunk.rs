@@ -110,12 +110,16 @@ pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
 
     for x in 0..32usize {
         for z in 0..32usize {
-            let n = (noise.get_noise(
+            let mut n = (noise.get_noise(
                 ((chunk_pos.x * CHUNK_SIZE + x as i32) as f32) / 200.,
                 ((chunk_pos.z * CHUNK_SIZE + z as i32) as f32) / 200.,
             ) + 1.) * 16.;
+            n += (noise.get_noise(
+                ((chunk_pos.x * CHUNK_SIZE + x as i32) as f32) / 1000.,
+                ((chunk_pos.z * CHUNK_SIZE + z as i32) as f32) / 1000.,
+            ) + 1.) * 16. *4.;
             for y in 0..32usize {
-                if (y as f32) < n {
+                if ((y as i32 + chunk_pos.y*32) as f32) < n {
                     data[x][y][z] = true;
                 } else {
                     data[x][y][z] = false;

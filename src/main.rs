@@ -53,7 +53,7 @@ fn setup(mut commands: Commands) {
     });
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(256., 64., 256.).looking_at(Vec3::ZERO,Vec3::Y),
+            transform: Transform::from_xyz(0., 32.*16., 0.).looking_at(Vec3::new(32.*8.,32.,32.*8.),Vec3::Y),
             ..default()
         },
         FlyCam
@@ -75,8 +75,8 @@ fn spawn_cubes(
     mut voxel_world: ResMut<VoxelWorld>,
 ){
     for x in 0..16 {
-        for y in 0..1 {
-            for z in 0..18 {
+        for y in 0..4 {
+            for z in 0..16 {
                 let pos = IVec3::new(x, y, z);
                 let chunk = gen_chunk_flat(pos);
                 voxel_world.insert(pos,chunk.into()); 
