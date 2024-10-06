@@ -6,16 +6,25 @@ use bevy::render::{
     render_resource::{Face, PrimitiveTopology},
 };
 use bracket_noise::prelude::*;
-
 use crate::quad::{new_quad, Direction};
+use crate::tools::ToUsize;
+use crate::world::get_voxel_neighbours;
 
-const CHUNK_SIZE: i32 = 32;
-const SEED: u64 = 1111;
+pub const CHUNK_SIZE: i32 = 32;
+pub const SEED: u64 = 1111;
 
 #[derive(Deref)]
 pub struct ChunkData {
     data: [[[bool; 32]; 32]; 32],
 }
+
+impl ChunkData {
+    pub fn get<T>(&self,x:T,y:T,z:T) -> bool 
+    where T: ToUsize {
+       self.data[x.to_usize()][y.to_usize()][z.to_usize()] 
+    }
+}
+
 pub struct Chunk {
     pub data: ChunkData,
     pub position: IVec3,
@@ -24,46 +33,6 @@ pub struct Chunk {
 #[derive(Component)]
 struct IsChunk;
 
-fn get_neighbours(chunk_data: &ChunkData, voxel_pos: IVec3) -> Vec<Direction> {
-    let mut directions: Vec<Direction> = Vec::new();
-    if voxel_pos.x == 0 {
-        directions.push(Direction::South)
-    } else if voxel_pos.x == CHUNK_SIZE - 1 {
-        directions.push(Direction::North)
-    } 
-    if voxel_pos.x != 0 && !chunk_data[(voxel_pos.x - 1) as usize][voxel_pos.y as usize][voxel_pos.z as usize] {
-        directions.push(Direction::South)
-    }
-    if voxel_pos.x != CHUNK_SIZE-1 && !chunk_data[(voxel_pos.x + 1) as usize][voxel_pos.y as usize][voxel_pos.z as usize] {
-        directions.push(Direction::North)
-    }
-     
-    if voxel_pos.y == 0 {
-        directions.push(Direction::Down)
-    } else if voxel_pos.y == CHUNK_SIZE - 1 {
-        directions.push(Direction::Up)
-    } 
-    if voxel_pos.y != 0 && !chunk_data[voxel_pos.x as usize][(voxel_pos.y - 1) as usize][voxel_pos.z as usize] {
-        directions.push(Direction::Down)
-    }
-    if voxel_pos.y != CHUNK_SIZE-1 && !chunk_data[voxel_pos.x as usize][(voxel_pos.y + 1) as usize][voxel_pos.z as usize] {
-        directions.push(Direction::Up)
-    }
-
-    if voxel_pos.z == 0 {
-        directions.push(Direction::East)
-    } else if voxel_pos.z == CHUNK_SIZE - 1 {
-        directions.push(Direction::West)
-    } 
-    if voxel_pos.z != 0 && !chunk_data[voxel_pos.x as usize][voxel_pos.y as usize][(voxel_pos.z - 1) as usize] {
-        directions.push(Direction::East)
-    }
-    if voxel_pos.z != CHUNK_SIZE-1 && !chunk_data[voxel_pos.x as usize][voxel_pos.y as usize][(voxel_pos.z + 1) as usize] {
-        directions.push(Direction::West)
-    }
-
-    return directions;
-}
 pub fn gen_mesh(chunk: &Chunk) -> Mesh {
     let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut norm: Vec<Vec3> = Vec::new();
@@ -71,10 +40,10 @@ pub fn gen_mesh(chunk: &Chunk) -> Mesh {
     for x in 0..32i32 {
         for y in 0..32i32 {
             for z in 0..32i32 {
-                if !chunk.data[x as usize][y as usize][z as usize] {
+                if !chunk.data.get(x,y,z) {
                     continue;
                 }
-                for dir in get_neighbours(&chunk.data, IVec3::new(x, y, z)) {
+                for dir in get_voxel_neighbours(&chunk.data, IVec3::new(x, y, z)) {
                     vertices.extend(new_quad(dir.clone(), 
                                              Vec3::new(
                                                 (chunk.position.x * CHUNK_SIZE + x) as f32,

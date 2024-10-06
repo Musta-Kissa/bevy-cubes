@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 #bevy = { version = "0.14.1", features = ["wayland"] }
-bevy = { version = "0.14.1", features = ["wayland", "dynamic_linking"] }
+#bevy = { version = "0.14.1", features = ["wayland", "dynamic_linking"] }
+bevy = { version = "0.14.1", features = ["dynamic_linking"] }
 bevy_flycam = "0.14.1"
 bracket-noise = "0.8.7"
 
@@ -16,5 +17,3 @@ opt-level = 1
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
 opt-level = 3
-
-#test
