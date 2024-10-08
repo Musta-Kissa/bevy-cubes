@@ -32,7 +32,7 @@ fn main() {
         .add_plugins(NoCameraPlayerPlugin)
         .insert_resource(MovementSettings {
             sensitivity: 0.00012, // default: 0.00012
-            speed: 64.0,          // default: 12.0
+            speed: 128.0,          // default: 12.0
         })
         .insert_resource(VoxelWorld::new())
         .add_systems(Startup, setup)
@@ -50,7 +50,7 @@ fn setup(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle {
         transform: light_transform,
         directional_light: DirectionalLight {
-            shadows_enabled: false,
+            shadows_enabled: true,
             illuminance: 4000.,
             ..default()
         },
