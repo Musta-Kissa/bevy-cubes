@@ -1,3 +1,7 @@
+use crate::quad::{new_quad, Direction};
+use crate::tools::ToUsize;
+use crate::world::{VoxelWorld};
+
 use bevy::math::f32::Vec3;
 use bevy::prelude::*;
 use bevy::render::{
@@ -6,22 +10,27 @@ use bevy::render::{
     render_resource::{Face, PrimitiveTopology},
 };
 use bracket_noise::prelude::*;
-use crate::quad::{new_quad, Direction};
-use crate::tools::ToUsize;
-use crate::world::get_voxel_neighbours;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+
+pub static QUAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 pub const CHUNK_SIZE: i32 = 32;
 pub const SEED: u64 = 1111;
 
 #[derive(Deref)]
 pub struct ChunkData {
+    #[deref]
     data: [[[bool; 32]; 32]; 32],
+    pub pos: IVec3,
 }
 
 impl ChunkData {
-    pub fn get<T>(&self,x:T,y:T,z:T) -> bool 
-    where T: ToUsize {
-       self.data[x.to_usize()][y.to_usize()][z.to_usize()] 
+    pub fn get<T>(&self, x: T, y: T, z: T) -> bool
+    where
+        T: ToUsize,
+    {
+        self.data[x.to_usize()][y.to_usize()][z.to_usize()]
     }
 }
 
@@ -33,44 +42,51 @@ pub struct Chunk {
 #[derive(Component)]
 struct IsChunk;
 
-pub fn gen_mesh(chunk: &Chunk) -> Mesh {
-    let mut vertices: Vec<[f32; 3]> = Vec::new();
-    let mut norm: Vec<Vec3> = Vec::new();
+impl Chunk {
+    pub fn gen_mesh(&self,world_data: &VoxelWorld) -> Mesh {
+        let mut vertices: Vec<[f32; 3]> = Vec::new();
+        let mut norm: Vec<Vec3> = Vec::new();
 
-    for x in 0..32i32 {
-        for y in 0..32i32 {
-            for z in 0..32i32 {
-                if !chunk.data.get(x,y,z) {
-                    continue;
-                }
-                for dir in get_voxel_neighbours(&chunk.data, IVec3::new(x, y, z)) {
-                    vertices.extend(new_quad(dir.clone(), 
-                                             Vec3::new(
-                                                (chunk.position.x * CHUNK_SIZE + x) as f32,
-                                                (chunk.position.y * CHUNK_SIZE + y) as f32,
-                                                (chunk.position.z * CHUNK_SIZE + z) as f32)) );
-                    let normal = match dir {
-                        Direction::North => Vec3::X,
-                        Direction::South => Vec3::NEG_X,
-                        Direction::East => Vec3::NEG_Z,
-                        Direction::West => Vec3::Z,
-                        Direction::Up => Vec3::Y,
-                        Direction::Down => Vec3::NEG_Y,
-                    };
-                    norm.extend(vec![normal; 4]);
+        for x in 0..32i32 {
+            for y in 0..32i32 {
+                for z in 0..32i32 {
+                    if !self.data.get(x, y, z) {
+                        continue;
+                    }
+                    for dir in world_data.get_voxel_neighbours(&self.data, IVec3::new(x, y, z)) {
+                        vertices.extend(new_quad(
+                            dir.clone(),
+                            Vec3::new(
+                                (self.position.x * CHUNK_SIZE + x) as f32,
+                                (self.position.y * CHUNK_SIZE + y) as f32,
+                                (self.position.z * CHUNK_SIZE + z) as f32,
+                            ),
+                        ));
+                        // Quad num ++
+                        QUAD_COUNT.fetch_add(1, Ordering::SeqCst);
+                        let normal = match dir {
+                            Direction::North => Vec3::X,
+                            Direction::South => Vec3::NEG_X,
+                            Direction::East => Vec3::NEG_Z,
+                            Direction::West => Vec3::Z,
+                            Direction::Up => Vec3::Y,
+                            Direction::Down => Vec3::NEG_Y,
+                        };
+                        norm.extend(vec![normal; 4]);
+                    }
                 }
             }
         }
-    }
-    let indeces = gen_indeces(vertices.len());
+        let indeces = gen_indeces(vertices.len());
 
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD,
-    )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
-    .with_inserted_indices(indeces)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, norm)
+        Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::RENDER_WORLD,
+        )
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
+        .with_inserted_indices(indeces)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, norm)
+    }
 }
 
 pub fn gen_chunk(chunk_pos: IVec3) -> Chunk {
@@ -98,7 +114,13 @@ pub fn gen_chunk(chunk_pos: IVec3) -> Chunk {
         }
     }
 
-    Chunk{ data: ChunkData { data: data }, position: chunk_pos}
+    Chunk {
+        data: ChunkData {
+            data: data,
+            pos: chunk_pos,
+        },
+        position: chunk_pos,
+    }
 }
 pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
     let mut noise = FastNoise::new();
@@ -113,16 +135,20 @@ pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
             let mut n = (noise.get_noise(
                 ((chunk_pos.x * CHUNK_SIZE + x as i32) as f32) / 200.,
                 ((chunk_pos.z * CHUNK_SIZE + z as i32) as f32) / 200.,
-            ) + 1.) * 16.;
+            ) + 1.)
+                * 16.;
 
             n += (noise.get_noise(
                 ((chunk_pos.x * CHUNK_SIZE + x as i32) as f32) / 1000.,
                 ((chunk_pos.z * CHUNK_SIZE + z as i32) as f32) / 1000.,
-            ) + 1.) * 16. *4.;
+            ) + 1.)
+                * 16.
+                * 4.;
+            n -= 32.;
 
             for y in 0..32usize {
                 //TODO Change this line
-                if ((y as i32 + chunk_pos.y*32) as f32) < n {
+                if ((y as i32 + chunk_pos.y * 32) as f32) < n {
                     data[x][y][z] = true;
                 } else {
                     data[x][y][z] = false;
@@ -130,7 +156,10 @@ pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
             }
         }
     }
-    Chunk{ data: ChunkData { data: data }, position: chunk_pos}
+    Chunk {
+        data: ChunkData { data: data , pos: chunk_pos},
+        position: chunk_pos,
+    }
 }
 pub fn gen_indeces(vert_len: usize) -> Indices {
     let mut indices: Vec<u32> = Vec::new();
@@ -148,14 +177,3 @@ pub fn gen_indeces(vert_len: usize) -> Indices {
     }
     Indices::U32(indices)
 }
-
-
-
-
-
-
-
-
-
-
-

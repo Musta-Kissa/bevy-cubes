@@ -1,9 +1,3 @@
-use bevy::prelude::*;
-use bevy::render::{
-    mesh::{Indices, VertexAttributeValues},
-    render_asset::RenderAssetUsages,
-    render_resource::PrimitiveTopology,
-};
 use bevy::math::f32::Vec3;
 use std::slice::Iter;
 
@@ -28,8 +22,8 @@ impl Direction {
         DIRECTIONS.iter()
     }
 }
-
 pub fn new_quad(dir: Direction, pos: Vec3) -> [[f32;3];4] {
+    
     //Down -y
     match dir {
         // Each face is written to have clockwise winding

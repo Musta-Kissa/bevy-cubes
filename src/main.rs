@@ -1,3 +1,7 @@
+use std::borrow::Borrow;
+use std::ops::Deref;
+use std::sync::atomic::Ordering;
+
 use bevy::math::f32::Vec3;
 use bevy::prelude::*;
 use bevy::render::{
@@ -34,6 +38,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Startup, spawn_cubes)
         .add_systems(Startup, spawn_cardinal_lines)
+        .add_systems(PostStartup, print_debug)
         .run();
 }
 
@@ -45,7 +50,7 @@ fn setup(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle {
         transform: light_transform,
         directional_light: DirectionalLight {
-            shadows_enabled: true,
+            shadows_enabled: false,
             illuminance: 4000.,
             ..default()
         },
@@ -75,16 +80,16 @@ fn spawn_cubes(
     mut voxel_world: ResMut<VoxelWorld>,
 ){
     for x in 0..16 {
-        for y in 0..4 {
+        for y in 0..3 {
             for z in 0..16 {
                 let pos = IVec3::new(x, y, z);
                 let chunk = gen_chunk_flat(pos);
-                voxel_world.insert(pos,chunk.into()); 
+                voxel_world.add_chunk(pos,chunk.into()); 
             }
         }
     }
     for (chunk_pos,chunk) in &voxel_world.chunks {
-        let mesh = gen_mesh(&chunk);
+        let mesh = chunk.gen_mesh(voxel_world.as_ref());
         let mesh_handle = meshes.add(mesh);
 
         commands.spawn((
@@ -156,4 +161,8 @@ fn spawn_cardinal_lines(
         }),
         ..default()
     });
+}
+
+fn print_debug(){
+    println!("NUMBER OF QUADS:{}",QUAD_COUNT.load(Ordering::SeqCst));
 }
