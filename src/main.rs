@@ -86,7 +86,7 @@ fn spawn_cubes(
             }
         }
     }
-    for (chunk_pos,chunk) in &voxel_world.chunks {
+    for (_,chunk) in &voxel_world.chunks {
         let mesh = chunk.gen_mesh(voxel_world.as_ref());
         let mesh_handle = meshes.add(mesh);
 

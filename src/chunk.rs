@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy::render::{
     mesh::Indices,
     render_asset::RenderAssetUsages,
-    render_resource::{Face, PrimitiveTopology},
+    render_resource::PrimitiveTopology,
 };
 use bracket_noise::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
