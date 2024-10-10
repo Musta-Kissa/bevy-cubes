@@ -1,5 +1,5 @@
 use crate::chunk::*;
-use crate::quad::{new_quad, Direction};
+use crate::quad::Direction;
 use bevy::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -10,10 +10,10 @@ pub struct VoxelWorld {
     pub quads: u64,
 }
 
-pub struct VoxelWorldPlugin;
-impl Plugin for VoxelWorldPlugin {
-    fn build(&self, app: &mut App) {}
-}
+//pub struct VoxelWorldPlugin;
+//impl Plugin for VoxelWorldPlugin {
+//fn build(&self, app: &mut App) {}
+//}
 
 impl VoxelWorld {
     pub fn new() -> Self {
@@ -31,13 +31,18 @@ impl VoxelWorld {
             None => None,
         }
     }
-    pub fn get_voxel_neighbours(&self, chunk_data: &ChunkData, voxel_pos: IVec3) -> Vec<Direction> {
+    pub fn get_voxel_neighbours(
+        &self,
+        chunk_data: &ChunkData,
+        neighbours: &ChunkNeighbours,
+        voxel_pos: IVec3,
+    ) -> Vec<Direction> {
         //North == +x
-        let chunk_pos = chunk_data.pos;
+        //let chunk_pos = chunk_data.pos;
 
         let mut directions: Vec<Direction> = Vec::new();
         if voxel_pos.x == 0 {
-            if let Some(chunk) = self.get_chunk(chunk_pos - IVec3::X) {
+            if let Some(chunk) = neighbours.get(IVec3::NEG_X) {
                 if !chunk.data.get(31, voxel_pos.y, voxel_pos.z) {
                     directions.push(Direction::South);
                 }
@@ -45,7 +50,7 @@ impl VoxelWorld {
                 directions.push(Direction::South);
             }
         } else if voxel_pos.x == CHUNK_SIZE - 1 {
-            if let Some(chunk) = self.get_chunk(chunk_pos + IVec3::X) {
+            if let Some(chunk) = neighbours.get(IVec3::X) {
                 if !chunk.data.get(0, voxel_pos.y, voxel_pos.z) {
                     directions.push(Direction::North);
                 }
@@ -63,7 +68,7 @@ impl VoxelWorld {
         }
 
         if voxel_pos.y == 0 {
-            if let Some(chunk) = self.get_chunk(chunk_pos - IVec3::Y) {
+            if let Some(chunk) = neighbours.get(IVec3::NEG_Y) {
                 if !chunk.data.get(voxel_pos.x, 31, voxel_pos.z) {
                     directions.push(Direction::Down)
                 }
@@ -71,7 +76,7 @@ impl VoxelWorld {
                 //directions.push(Direction::Down) //Remove world floor
             }
         } else if voxel_pos.y == CHUNK_SIZE - 1 {
-            if let Some(chunk) = self.get_chunk(chunk_pos + IVec3::Y) {
+            if let Some(chunk) = neighbours.get(IVec3::Y) {
                 if !chunk.data.get(voxel_pos.x, 0, voxel_pos.z) {
                     directions.push(Direction::Up)
                 }
@@ -89,7 +94,7 @@ impl VoxelWorld {
         }
 
         if voxel_pos.z == 0 {
-            if let Some(chunk) = self.get_chunk(chunk_pos - IVec3::Z) {
+            if let Some(chunk) = neighbours.get(IVec3::NEG_Z) {
                 if !chunk.data.get(voxel_pos.x, voxel_pos.y, 31) {
                     directions.push(Direction::East)
                 }
@@ -97,7 +102,7 @@ impl VoxelWorld {
                 directions.push(Direction::East)
             }
         } else if voxel_pos.z == CHUNK_SIZE - 1 {
-            if let Some(chunk) = self.get_chunk(chunk_pos + IVec3::Z) {
+            if let Some(chunk) = neighbours.get(IVec3::Z) {
                 if !chunk.data.get(voxel_pos.x, voxel_pos.y, 0) {
                     directions.push(Direction::West)
                 }
@@ -116,8 +121,4 @@ impl VoxelWorld {
 
         return directions;
     }
-}
-
-pub fn get_voxel_neighbours2(chunk_data: &ChunkData, voxel_pos: IVec3) -> Vec<Direction> {
-    todo!()
 }

@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-use std::ops::Deref;
 use std::sync::atomic::Ordering;
 
 use bevy::math::f32::Vec3;
@@ -24,7 +22,7 @@ fn main() {
         .add_plugins(FpsPlugin)
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                present_mode: PresentMode::Immediate, //NO V-Sync comment to turn on
+                present_mode: PresentMode::AutoNoVsync, //NO V-Sync comment to turn on
                 ..default()
             }),
             ..default()

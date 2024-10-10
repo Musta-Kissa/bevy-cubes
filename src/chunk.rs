@@ -1,6 +1,6 @@
 use crate::quad::{new_quad, Direction};
 use crate::tools::ToUsize;
-use crate::world::{VoxelWorld};
+use crate::world::VoxelWorld;
 
 use bevy::math::f32::Vec3;
 use bevy::prelude::*;
@@ -39,13 +39,42 @@ pub struct Chunk {
     pub data: ChunkData,
 }
 
-#[derive(Component)]
-struct IsChunk;
+#[derive(Deref)]
+pub struct ChunkNeighbours {
+    chunks: [Option<Arc<Chunk>>; 6],
+}
+
+impl ChunkNeighbours {
+    pub fn new(voxel_world: &VoxelWorld, middle_chunk: IVec3) -> Self {
+        let x = voxel_world.get_chunk(middle_chunk + IVec3::X);
+        let neg_x = voxel_world.get_chunk(middle_chunk - IVec3::X);
+        let y = voxel_world.get_chunk(middle_chunk + IVec3::Y);
+        let neg_y = voxel_world.get_chunk(middle_chunk - IVec3::Y);
+        let z = voxel_world.get_chunk(middle_chunk + IVec3::Z);
+        let neg_z = voxel_world.get_chunk(middle_chunk - IVec3::Z);
+
+        ChunkNeighbours {
+            chunks: [x, neg_x, y, neg_y, z, neg_z],
+        }
+    }
+    pub fn get(&self, pos:IVec3) -> &Option<Arc<Chunk>> {
+        match pos {
+           IVec3::X => &self[0],
+           IVec3::NEG_X => &self[1],
+           IVec3::Y => &self[2],
+           IVec3::NEG_Y => &self[3],
+           IVec3::Z => &self[4],
+           IVec3::NEG_Z => &self[5],
+            _ => &None
+        }
+    }
+}
 
 impl Chunk {
-    pub fn gen_mesh(&self,world_data: &VoxelWorld) -> Mesh {
+    pub fn gen_mesh(&self, world_data: &VoxelWorld) -> Mesh {
         let mut vertices: Vec<[f32; 3]> = Vec::new();
         let mut norm: Vec<Vec3> = Vec::new();
+        let neighbours = ChunkNeighbours::new(world_data,self.position);
 
         for x in 0..32i32 {
             for y in 0..32i32 {
@@ -53,7 +82,7 @@ impl Chunk {
                     if !self.data.get(x, y, z) {
                         continue;
                     }
-                    for dir in world_data.get_voxel_neighbours(&self.data, IVec3::new(x, y, z)) {
+                    for dir in world_data.get_voxel_neighbours(&self.data,&neighbours,IVec3::new(x, y, z)) {
                         vertices.extend(new_quad(
                             dir.clone(),
                             Vec3::new(
@@ -157,7 +186,10 @@ pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
         }
     }
     Chunk {
-        data: ChunkData { data: data , pos: chunk_pos},
+        data: ChunkData {
+            data: data,
+            pos: chunk_pos,
+        },
         position: chunk_pos,
     }
 }
