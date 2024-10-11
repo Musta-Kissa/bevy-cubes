@@ -11,19 +11,7 @@ pub enum Direction {
     Down
 }
 
-impl Direction {
-    pub fn iter() -> Iter<'static, Direction> {
-        static DIRECTIONS: [Direction;6] = [Direction::North, 
-                                            Direction::South, 
-                                            Direction::East, 
-                                            Direction::West, 
-                                            Direction::Up, 
-                                            Direction::Down];
-        DIRECTIONS.iter()
-    }
-}
 pub fn new_quad(dir: Direction, pos: Vec3) -> [[f32;3];4] {
-    
     //Down -y
     match dir {
         // Each face is written to have clockwise winding
@@ -54,6 +42,10 @@ pub fn new_quad(dir: Direction, pos: Vec3) -> [[f32;3];4] {
             [pos.x+1.,pos.y+1.,pos.z+1.],
             [pos.x+0.,pos.y+1.,pos.z+1.],
             [pos.x+0.,pos.y+0.,pos.z+1.],
+            //[pos.x+0.9,pos.y+0.1,pos.z+0.9],
+            //[pos.x+0.9,pos.y+0.9,pos.z+0.9],
+            //[pos.x+0.1,pos.y+0.9,pos.z+0.9],
+            //[pos.x+0.1,pos.y+0.1,pos.z+0.9],
             ],
         Direction::Up => 
             [
@@ -71,4 +63,3 @@ pub fn new_quad(dir: Direction, pos: Vec3) -> [[f32;3];4] {
             ],
     }
 }
-

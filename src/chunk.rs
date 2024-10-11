@@ -96,8 +96,8 @@ impl Chunk {
                         let normal = match dir {
                             Direction::North => Vec3::X,
                             Direction::South => Vec3::NEG_X,
-                            Direction::East => Vec3::NEG_Z,
                             Direction::West => Vec3::Z,
+                            Direction::East => Vec3::NEG_Z,
                             Direction::Up => Vec3::Y,
                             Direction::Down => Vec3::NEG_Y,
                         };
@@ -109,7 +109,10 @@ impl Chunk {
         let indeces = gen_indeces(vertices.len());
 
         Mesh::new(
+            //TIANGLES
             PrimitiveTopology::TriangleList,
+            //WIREFRAME
+            //PrimitiveTopology::LineList,
             RenderAssetUsages::RENDER_WORLD,
         )
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
@@ -195,16 +198,29 @@ pub fn gen_chunk_flat(chunk_pos: IVec3) -> Chunk {
 }
 pub fn gen_indeces(vert_len: usize) -> Indices {
     let mut indices: Vec<u32> = Vec::new();
-    indices.reserve_exact(vert_len);
+    indices.reserve_exact(vert_len * 10 / 4);
     //clockwise winding
     for i in 0..(vert_len as u32) / 4 {
         indices.extend([
+            //TRIANGLE LIST
             0 + 4 * i,
             1 + 4 * i,
             2 + 4 * i,
             2 + 4 * i,
             3 + 4 * i,
             0 + 4 * i,
+
+            // WIREFRAME:
+            //0 + 4 * i,
+            //1 + 4 * i,
+            //1 + 4 * i,
+            //2 + 4 * i,
+            //2 + 4 * i,
+            //3 + 4 * i,
+            //3 + 4 * i,
+            //0 + 4 * i,
+            //0 + 4 * i,
+            //2 + 4 * i,
         ]);
     }
     Indices::U32(indices)

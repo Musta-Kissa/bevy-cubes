@@ -10,11 +10,6 @@ pub struct VoxelWorld {
     pub quads: u64,
 }
 
-//pub struct VoxelWorldPlugin;
-//impl Plugin for VoxelWorldPlugin {
-//fn build(&self, app: &mut App) {}
-//}
-
 impl VoxelWorld {
     pub fn new() -> Self {
         VoxelWorld {
@@ -31,15 +26,14 @@ impl VoxelWorld {
             None => None,
         }
     }
+
+    //TODO Simplyfy (put middle chunkl in ChunkNeighbours and impl get_block(x,y,z) for ChunkNeighbours
     pub fn get_voxel_neighbours(
         &self,
         chunk_data: &ChunkData,
         neighbours: &ChunkNeighbours,
         voxel_pos: IVec3,
     ) -> Vec<Direction> {
-        //North == +x
-        //let chunk_pos = chunk_data.pos;
-
         let mut directions: Vec<Direction> = Vec::new();
         if voxel_pos.x == 0 {
             if let Some(chunk) = neighbours.get(IVec3::NEG_X) {
